@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import google.generativeai as genai
+from dotenv import load_dotenv
 
+load_dotenv()
 app = FastAPI()
 
 genai.configure(api_key="AIzaSyDb15g4bUk_DoexsrU6ztYo8HfY00NjVbY")
