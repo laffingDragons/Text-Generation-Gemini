@@ -2,6 +2,8 @@
 
 A Streamlit app that generates hooking stories based on user-provided titles using Google Generative AI (Gemini 1.5 Flash). Users can input their own Gemini API key directly in the app, making it easy to use without modifying configuration files.
 
+![alt text](image.png)
+
 ## Features
 
 - Enter a Gemini API key securely via the app interface.
