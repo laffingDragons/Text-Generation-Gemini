@@ -1,5 +1,5 @@
 [project]
-name = "text-generation-gemini"
+name = "Text-Generation-Gemini"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
