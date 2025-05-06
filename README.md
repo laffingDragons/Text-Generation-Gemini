@@ -45,6 +45,8 @@ A Streamlit app that generates hooking stories based on user-provided titles usi
 2. Sign in with your Google account.
 3. Create a new API key or copy an existing one.
 4. Paste the API key into the app's input field when prompted.
+<img width="960" alt="Screenshot 2025-05-06 at 10 30 04 AM" src="https://github.com/user-attachments/assets/8994677c-1144-4c21-8451-8065a5bcd8a0" />
+
 
 ## Deployment
 
