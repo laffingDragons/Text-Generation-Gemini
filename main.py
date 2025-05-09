@@ -30,7 +30,7 @@ app.add_middleware(
 )
 
 # Configure Gemini
-api_key = dotenv.get("GEMINI_API_KEY")
+api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     logger.error("GEMINI_API_KEY not found in environment")
     raise ValueError("GEMINI_API_KEY not found. Please set it in your .env file")
@@ -40,6 +40,10 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 
 class StoryRequest(BaseModel):
     title: str = Field(..., min_length=3, max_length=200, description="Title or topic for the story")
+
+class TranslationRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=5000, description="Text to translate")
+    target_language: str = Field(..., min_length=2, max_length=50, description="Target language for translation")
 
 class ErrorResponse(BaseModel):
     detail: str
@@ -213,11 +217,6 @@ async def health_check():
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Service is currently unavailable: {str(e)}"
         )
-        
-class TranslationRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=5000, description="Text to translate")
-    target_language: str = Field(..., min_length=2, max_length=50, description="Target language for translation")
-
 
 if __name__ == "__main__":
     import uvicorn

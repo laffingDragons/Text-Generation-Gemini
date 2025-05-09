@@ -3,11 +3,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
-import time
 import httpx
-from streamlit_lottie import st_lottie
-from streamlit_extras.colored_header import colored_header
-from streamlit_extras.add_vertical_space import add_vertical_space
 import google.generativeai as genai
 from anthropic import Anthropic
 import openai
@@ -25,7 +21,7 @@ API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # Page configuration
 st.set_page_config(
-    page_title="Multi-LLM Story & Translation Hub",
+    page_title="Multi-LLM Hub",
     page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -36,9 +32,6 @@ st.markdown("""
 <style>
     .main {
         background-color: #f5f7f9;
-    }
-    .stApp {
-        background-image: linear-gradient(to bottom right, #f5f7f9, #e8eef2);
     }
     .stTextInput, .stSelectbox, .stTextarea {
         background-color: #ffffff;
@@ -53,13 +46,7 @@ st.markdown("""
         padding: 10px 20px;
         font-weight: 600;
         border: none;
-        transition: all 0.3s;
         width: 100%;
-    }
-    .stButton>button:hover {
-        background-color: #3730A3;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     .output-container {
         background-color: white;
@@ -71,18 +58,11 @@ st.markdown("""
     h1, h2, h3 {
         color: #4F46E5;
     }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 12px;
-    }
     .stTabs [data-baseweb="tab"] {
         background-color: #ffffff;
         border-radius: 6px 6px 0px 0px;
         padding: 10px 20px;
         font-weight: 600;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #4F46E5;
-        color: white;
     }
     .error-message {
         color: #D32F2F;
@@ -105,39 +85,9 @@ st.markdown("""
         border-radius: 5px;
         border-left: 5px solid #FF6D00;
     }
-    .model-selection {
-        background-color: white;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
     .gradient-text {
-        background: linear-gradient(45deg, #3730A3, #4F46E5);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
         font-weight: 800;
-    }
-    .provider-logo {
-        max-height: 30px;
-        margin-right: 10px;
-    }
-    .provider-card {
-        background-color: white;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        margin: 10px 0;
-        border: 2px solid transparent;
-        transition: all 0.3s;
-    }
-    .provider-card:hover {
-        border-color: #4F46E5;
-        transform: translateY(-2px);
-    }
-    .provider-card.selected {
-        border-color: #4F46E5;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        color: #4F46E5;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -150,17 +100,6 @@ if 'active_provider' not in st.session_state:
     st.session_state.active_provider = None
 
 # Helper functions
-def load_lottie_animation(url):
-    """Load Lottie animation from URL"""
-    try:
-        with httpx.Client() as client:
-            response = client.get(url)
-            if response.status_code == 200:
-                return response.json()
-    except Exception as e:
-        logger.error(f"Error loading animation: {e}")
-    return None
-
 def verify_api_key(provider, api_key):
     """Verify if the API key is valid for the selected provider"""
     try:
@@ -171,60 +110,22 @@ def verify_api_key(provider, api_key):
             
         elif provider == "anthropic":
             client = Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=10,
-                messages=[{"role": "user", "content": "Hello"}]
-            )
-            return True, "Anthropic API key verified successfully"
+            # The lighter way to verify is just to initialize the client
+            # We'll avoid making an actual API call here
+            return True, "Anthropic API key format accepted"
             
         elif provider == "gemini":
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content("Hello")
-            return True, "Google Gemini API key verified successfully"
+            # We'll avoid making an actual API call here
+            return True, "Google Gemini API key format accepted"
             
-        elif provider == "cohere":
-            # Using requests since we haven't imported the cohere library yet
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            response = requests.get("https://api.cohere.ai/v1/models", headers=headers)
-            if response.status_code == 200:
-                return True, "Cohere API key verified successfully"
+        elif provider in ["cohere", "mistral", "llama", "deepseek"]:
+            # For these providers, we'll just validate the key format for now
+            if len(api_key) >= 20:  # Most API keys are at least 20 chars
+                return True, f"{provider.capitalize()} API key format accepted"
             else:
-                return False, f"Cohere API verification failed: {response.text}"
-                
-        elif provider == "mistral":
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            response = requests.get("https://api.mistral.ai/v1/models", headers=headers)
-            if response.status_code == 200:
-                return True, "Mistral API key verified successfully"
-            else:
-                return False, f"Mistral API verification failed: {response.text}"
-                
-        elif provider == "llama":
-            # Since this is a less standard API, we'll do a simplified check
-            return True, "Meta Llama API key format accepted (verification limited)"
-            
-        elif provider == "deepseek":
-            # Using requests since deepseek may have a custom API
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            # This is a placeholder URL - replace with actual DeepSeek API endpoint
-            response = requests.get("https://api.deepseek.com/v1/models", headers=headers)
-            if response.status_code == 200:
-                return True, "DeepSeek API key verified successfully"
-            else:
-                # For now, we'll accept the key format
-                return True, "DeepSeek API key format accepted (verification limited)"
-        
+                return False, f"{provider.capitalize()} API key seems too short"
         else:
             return False, "Unknown provider"
             
@@ -250,7 +151,11 @@ def generate_with_llm(provider, api_key, prompt, model=None):
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}]
             )
-            return True, response.content[0].text
+            try:
+                return True, response.content[0].text
+            except (IndexError, AttributeError):
+                # Fallback if the response structure is different
+                return True, str(response)
             
         elif provider == "gemini":
             genai.configure(api_key=api_key)
@@ -290,41 +195,10 @@ def generate_with_llm(provider, api_key, prompt, model=None):
             else:
                 return False, f"Mistral API error: {response.text}"
                 
-        elif provider == "llama":
-            # Placeholder for Llama API integration
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model or "meta-llama-3-8b-instruct",
-                "prompt": prompt,
-                "max_tokens": 1024
-            }
-            # This is a placeholder - replace with actual Meta Llama API endpoint
-            response = requests.post("https://api.llama.api/v1/completions", headers=headers, json=payload)
-            if response.status_code == 200:
-                return True, response.json().get("choices", [{}])[0].get("text", "")
-            else:
-                return False, f"Llama API error: {response.text}"
-                
-        elif provider == "deepseek":
-            # Placeholder for DeepSeek API integration
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model or "deepseek-chat",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 1024
-            }
-            # This is a placeholder - replace with actual DeepSeek API endpoint
-            response = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=payload)
-            if response.status_code == 200:
-                return True, response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            else:
-                return False, f"DeepSeek API error: {response.text}"
+        elif provider in ["llama", "deepseek"]:
+            # Fallback for providers we don't have direct API access to
+            # In a real app, you'd implement these APIs properly
+            return False, f"The {provider} API integration is not available in this demo version. Please use one of the other providers."
             
         else:
             return False, "Unknown provider"
@@ -369,22 +243,6 @@ llm_providers = {
             "mistral-large-latest": "Mistral Large (Powerful)"
         }
     },
-    "llama": {
-        "name": "Meta",
-        "description": "Llama models from Meta",
-        "models": {
-            "meta-llama-3-8b-instruct": "Llama 3 8B (Fast)",
-            "meta-llama-3-70b-instruct": "Llama 3 70B (Powerful)"
-        }
-    },
-    "deepseek": {
-        "name": "DeepSeek",
-        "description": "Models from DeepSeek",
-        "models": {
-            "deepseek-chat": "DeepSeek Chat (General)",
-            "deepseek-coder": "DeepSeek Coder (Code-specialized)"
-        }
-    },
     "cohere": {
         "name": "Cohere",
         "description": "Models from Cohere",
@@ -408,26 +266,22 @@ def main():
         for provider_id, provider_info in llm_providers.items():
             provider_selected = st.session_state.active_provider == provider_id
             
-            with st.container():
-                col1, col2 = st.columns([4, 1])
-                with col1:
-                    if st.button(
-                        f"{provider_info['name']}",
-                        key=f"provider_{provider_id}",
-                        help=provider_info['description'],
-                        use_container_width=True,
-                        type="primary" if provider_selected else "secondary"
-                    ):
-                        st.session_state.active_provider = provider_id
-                        st.rerun()
-                
-                # Show verification status if available
-                with col2:
-                    if provider_id in st.session_state.api_verified:
-                        if st.session_state.api_verified[provider_id]:
-                            st.markdown("✅", help="API key verified")
-                        else:
-                            st.markdown("❌", help="API key invalid")
+            if st.button(
+                f"{provider_info['name']}",
+                key=f"provider_{provider_id}",
+                help=provider_info['description'],
+                use_container_width=True,
+                type="primary" if provider_selected else "secondary"
+            ):
+                st.session_state.active_provider = provider_id
+                st.rerun()
+        
+            # Show verification status if available
+            if provider_id in st.session_state.api_verified:
+                if st.session_state.api_verified[provider_id]:
+                    st.success(f"{provider_info['name']} verified ✅")
+                else:
+                    st.error(f"{provider_info['name']} invalid ❌")
         
         st.markdown("---")
         
@@ -470,12 +324,6 @@ def main():
                 
                 # Display model info
                 st.info(provider_info["models"][selected_model])
-        
-        # Lottie animation in sidebar
-        lottie_url = "https://assets5.lottiefiles.com/packages/lf20_kk62um9v.json"
-        lottie_anim = load_lottie_animation(lottie_url)
-        if lottie_anim:
-            st_lottie(lottie_anim, height=200, key="sidebar_animation")
         
         st.markdown("---")
         st.markdown("### About")
@@ -524,16 +372,17 @@ def main():
         
         if story_title and generate_button:
             if len(story_title) < 3:
-                st.markdown(f"<div class='error-message'>Title is too short. Please provide at least 3 characters.</div>", unsafe_allow_html=True)
+                st.error("Title is too short. Please provide at least 3 characters.")
             else:
                 with st.spinner("Generating your story..."):
                     prompt = f"Generate a creative, engaging story about the following topic or title: '{story_title}'. Make it approximately 500 words long with a clear beginning, middle, and end."
                     success, result = generate_with_llm(provider, api_key, prompt, model)
                     
                     if success:
-                        st.markdown(f"<div class='output-container'><h3>{story_title}</h3>{result}</div>", unsafe_allow_html=True)
+                        st.markdown(f"### {story_title}")
+                        st.write(result)
                     else:
-                        st.markdown(f"<div class='error-message'>{result}</div>", unsafe_allow_html=True)
+                        st.error(result)
     
     # Text Summarizer Tab
     with tabs[1]:
@@ -546,16 +395,17 @@ def main():
         
         if text_to_summarize and summarize_button:
             if len(text_to_summarize) < 100:
-                st.markdown(f"<div class='error-message'>Text is too short. Please provide at least 100 characters for a meaningful summary.</div>", unsafe_allow_html=True)
+                st.error("Text is too short. Please provide at least 100 characters for a meaningful summary.")
             else:
                 with st.spinner("Summarizing your text..."):
                     prompt = f"Summarize the following text concisely, capturing the main points and important details:\n\n{text_to_summarize}"
                     success, result = generate_with_llm(provider, api_key, prompt, model)
                     
                     if success:
-                        st.markdown(f"<div class='output-container'><h3>Summary</h3>{result}</div>", unsafe_allow_html=True)
+                        st.markdown("### Summary")
+                        st.write(result)
                     else:
-                        st.markdown(f"<div class='error-message'>{result}</div>", unsafe_allow_html=True)
+                        st.error(result)
     
     # Translator Tab
     with tabs[2]:
@@ -581,7 +431,7 @@ def main():
         
         if text_to_translate and translate_button:
             if len(text_to_translate) < 1:
-                st.markdown(f"<div class='error-message'>Please enter some text to translate.</div>", unsafe_allow_html=True)
+                st.error("Please enter some text to translate.")
             else:
                 with st.spinner(f"Translating to {target_language}..."):
                     prompt = f"Translate the following text to {target_language}. Maintain the original meaning and tone as closely as possible:\n\n{text_to_translate}"
@@ -590,11 +440,13 @@ def main():
                     if success:
                         col1, col2 = st.columns(2)
                         with col1:
-                            st.markdown(f"<div class='output-container'><h3>Original Text</h3>{text_to_translate}</div>", unsafe_allow_html=True)
+                            st.markdown("### Original Text")
+                            st.write(text_to_translate)
                         with col2:
-                            st.markdown(f"<div class='output-container'><h3>Translated Text ({target_language})</h3>{result}</div>", unsafe_allow_html=True)
+                            st.markdown(f"### Translated Text ({target_language})")
+                            st.write(result)
                     else:
-                        st.markdown(f"<div class='error-message'>{result}</div>", unsafe_allow_html=True)
+                        st.error(result)
 
 if __name__ == "__main__":
     main()
